@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@theme {
+  /* Color Palette - Medical/Health themed */
+  --color-primary-50: #f0f9f9;
+  --color-primary-100: #d9f1f0;
+  --color-primary-200: #b6e3e2;
+  --color-primary-300: #87cece;
+  --color-primary-400: #4fadac;
+  --color-primary-500: #368f8e;
+  --color-primary-600: #2b7473;
+  --color-primary-700: #265e5d;
+  --color-primary-800: #224c4b;
+  --color-primary-900: #204040;
+
+  --color-accent-50: #fef4f2;
+  --color-accent-100: #fee6e0;
+  --color-accent-200: #fdd0c6;
+  --color-accent-300: #fbae9d;
+  --color-accent-400: #f78064;
+  --color-accent-500: #ef5a3c;
+  --color-accent-600: #dc3f21;
+  --color-accent-700: #b93318;
+  --color-accent-800: #982e19;
+  --color-accent-900: #7e2c1a;
+
+  --color-success-50: #f0fdf5;
+  --color-success-100: #dcfce8;
+  --color-success-200: #bbf7d1;
+  --color-success-300: #86efac;
+  --color-success-400: #4ade80;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+
+  --color-warning-50: #fefce8;
+  --color-warning-100: #fef9c3;
+  --color-warning-200: #fef08a;
+  --color-warning-300: #fde047;
+  --color-warning-400: #facc15;
+  --color-warning-500: #eab308;
+  --color-warning-600: #ca8a04;
+  --color-warning-700: #a16207;
+  --color-warning-800: #854d0e;
+  --color-warning-900: #713f12;
+
+  /* Typography */
+  --font-family-display: 'Poppins', system-ui, sans-serif;
+  --font-family-body: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  @font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+  }
+
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  }
+
+  * {
+    @apply border-gray-200;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-family-body);
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family-display);
+    font-weight: 600;
+  }
+
+  h1 {
+    font-size: 2rem;
+    line-height: 2.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  h4 {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+  }
+
+  p {
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+  }
+
+  button {
+    font-family: var(--font-family-body);
+    font-weight: 500;
+  }
+}
