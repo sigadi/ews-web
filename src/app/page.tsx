@@ -459,7 +459,7 @@ export default function Page() {
         </button>
 
         {/* Frame mobile */}
-        <div className="w-full max-w-md h-[1000px] bg-white rounded-[3rem] border-8 border-gray-800 shadow-xl overflow-hidden flex flex-col">
+        <div className="w-full max-w-md h-250 bg-white rounded-[3rem] border-8 border-gray-800 shadow-xl overflow-hidden flex flex-col">
           <StatusBar />
 
           {/* --- Tambahan wrapper scroll agar tampilan login bisa scroll --- */}
@@ -519,7 +519,7 @@ export default function Page() {
       </div>
 
       {/* FRAME DEVICE */}
-      <div className="w-full max-w-md h-[1000px] bg-white rounded-[3rem] border-8 border-gray-800 shadow-2xl overflow-hidden flex flex-col">
+      <div className="w-full max-w-md h-250 bg-white rounded-[3rem] border-8 border-gray-800 shadow-2xl overflow-hidden flex flex-col">
         <StatusBar />
 
         {/* Semua screen user scroll di sini */}

@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from 'react';
 import { Search, Plus, Edit, Trash2, Eye, EyeOff, FileText, Video, Image as ImageIcon } from 'lucide-react';
 

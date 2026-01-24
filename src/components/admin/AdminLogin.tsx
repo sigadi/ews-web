@@ -1,24 +1,37 @@
-import { useState } from 'react';
-import { Lock, Mail, Shield } from 'lucide-react';
+import { useState } from "react";
+import { Lock, Mail, Shield } from "lucide-react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface AdminLoginProps {
   onLogin: () => void;
 }
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login - in real app, this would authenticate
-    if (email && password) {
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+
+      const token = await userCredential.user.getIdToken();
+      localStorage.setItem("token", token);
+
       onLogin();
+    } catch (err) {
+      alert("Email atau password salah");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-emerald-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-teal-50 to-emerald-50 p-4">
       <div className="w-full max-w-md">
         {/* Logo and Title */}
         <div className="text-center mb-8">
@@ -31,8 +44,10 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
 
         {/* Login Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-gray-900 mb-6 text-center">Login Administrator</h2>
-          
+          <h2 className="text-gray-900 mb-6 text-center">
+            Login Administrator
+          </h2>
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Input */}
             <div>
@@ -96,11 +111,6 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           </form>
 
           {/* Info */}
-          <div className="mt-6 p-4 bg-teal-50 rounded-xl">
-            <p className="text-teal-800 text-center">
-              Demo Login: Gunakan email dan password apa saja
-            </p>
-          </div>
         </div>
 
         {/* Footer */}

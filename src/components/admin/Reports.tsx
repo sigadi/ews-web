@@ -1,37 +1,53 @@
-import { Download, Calendar, TrendingUp, Users, FileText } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+"use client";
+
+import { Download, Calendar, TrendingUp, Users, FileText } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function Reports() {
   const monthlyScreenings = [
-    { month: 'Jan', total: 120, positive: 15, negative: 105 },
-    { month: 'Feb', total: 135, positive: 18, negative: 117 },
-    { month: 'Mar', total: 148, positive: 12, negative: 136 },
-    { month: 'Apr', total: 142, positive: 20, negative: 122 },
-    { month: 'Mei', total: 160, positive: 17, negative: 143 },
-    { month: 'Jun', total: 156, positive: 23, negative: 133 },
+    { month: "Jan", total: 120, positive: 15, negative: 105 },
+    { month: "Feb", total: 135, positive: 18, negative: 117 },
+    { month: "Mar", total: 148, positive: 12, negative: 136 },
+    { month: "Apr", total: 142, positive: 20, negative: 122 },
+    { month: "Mei", total: 160, positive: 17, negative: 143 },
+    { month: "Jun", total: 156, positive: 23, negative: 133 },
   ];
 
   const ageDistribution = [
-    { range: '20-25', count: 180 },
-    { range: '26-30', count: 320 },
-    { range: '31-35', count: 285 },
-    { range: '36-40', count: 210 },
-    { range: '41-45', count: 145 },
-    { range: '46-50', count: 94 },
+    { range: "20-25", count: 180 },
+    { range: "26-30", count: 320 },
+    { range: "31-35", count: 285 },
+    { range: "36-40", count: 210 },
+    { range: "41-45", count: 145 },
+    { range: "46-50", count: 94 },
   ];
 
   const riskLevels = [
-    { name: 'Rendah', value: 780, color: '#10b981' },
-    { name: 'Sedang', value: 431, color: '#f59e0b' },
-    { name: 'Tinggi', value: 23, color: '#ef4444' },
+    { name: "Rendah", value: 780, color: "#10b981" },
+    { name: "Sedang", value: 431, color: "#f59e0b" },
+    { name: "Tinggi", value: 23, color: "#ef4444" },
   ];
 
   const regionData = [
-    { region: 'Jakarta Pusat', screenings: 245, highRisk: 8 },
-    { region: 'Jakarta Selatan', screenings: 198, highRisk: 5 },
-    { region: 'Jakarta Timur', screenings: 167, highRisk: 4 },
-    { region: 'Jakarta Barat', screenings: 153, highRisk: 3 },
-    { region: 'Jakarta Utara', screenings: 121, highRisk: 3 },
+    { region: "Jakarta Pusat", screenings: 245, highRisk: 8 },
+    { region: "Jakarta Selatan", screenings: 198, highRisk: 5 },
+    { region: "Jakarta Timur", screenings: 167, highRisk: 4 },
+    { region: "Jakarta Barat", screenings: 153, highRisk: 3 },
+    { region: "Jakarta Utara", screenings: 121, highRisk: 3 },
   ];
 
   return (
@@ -39,7 +55,9 @@ export default function Reports() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-gray-900 mb-2">Laporan & Analitik</h1>
-        <p className="text-gray-600">Analisis data dan statistik sistem EWS CaServ</p>
+        <p className="text-gray-600">
+          Analisis data dan statistik sistem EWS CaServ
+        </p>
       </div>
 
       {/* Date Range Selector */}
@@ -57,7 +75,9 @@ export default function Reports() {
                 />
               </div>
               <div>
-                <label className="block text-gray-600 mb-1">Sampai Tanggal</label>
+                <label className="block text-gray-600 mb-1">
+                  Sampai Tanggal
+                </label>
                 <input
                   type="date"
                   defaultValue="2024-11-28"
@@ -133,9 +153,27 @@ export default function Reports() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="total" stroke="#14b8a6" strokeWidth={2} name="Total" />
-              <Line type="monotone" dataKey="positive" stroke="#ef4444" strokeWidth={2} name="Positif" />
-              <Line type="monotone" dataKey="negative" stroke="#10b981" strokeWidth={2} name="Negatif" />
+              <Line
+                type="monotone"
+                dataKey="total"
+                stroke="#14b8a6"
+                strokeWidth={2}
+                name="Total"
+              />
+              <Line
+                type="monotone"
+                dataKey="positive"
+                stroke="#ef4444"
+                strokeWidth={2}
+                name="Positif"
+              />
+              <Line
+                type="monotone"
+                dataKey="negative"
+                stroke="#10b981"
+                strokeWidth={2}
+                name="Negatif"
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -150,7 +188,9 @@ export default function Reports() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) =>
+                  `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`
+                }
                 outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
@@ -206,29 +246,54 @@ export default function Reports() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-gray-700">Bulan</th>
-                <th className="px-6 py-3 text-left text-gray-700">Total Skrining</th>
-                <th className="px-6 py-3 text-left text-gray-700">Hasil Positif</th>
-                <th className="px-6 py-3 text-left text-gray-700">Hasil Negatif</th>
-                <th className="px-6 py-3 text-left text-gray-700">Tingkat Deteksi</th>
-                <th className="px-6 py-3 text-left text-gray-700">Pertumbuhan</th>
+                <th className="px-6 py-3 text-left text-gray-700">
+                  Total Skrining
+                </th>
+                <th className="px-6 py-3 text-left text-gray-700">
+                  Hasil Positif
+                </th>
+                <th className="px-6 py-3 text-left text-gray-700">
+                  Hasil Negatif
+                </th>
+                <th className="px-6 py-3 text-left text-gray-700">
+                  Tingkat Deteksi
+                </th>
+                <th className="px-6 py-3 text-left text-gray-700">
+                  Pertumbuhan
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {monthlyScreenings.map((data, index) => {
-                const detectionRate = ((data.positive / data.total) * 100).toFixed(2);
-                const growth = index > 0 
-                  ? (((data.total - monthlyScreenings[index - 1].total) / monthlyScreenings[index - 1].total) * 100).toFixed(1)
-                  : '0';
+                const detectionRate = (
+                  (data.positive / data.total) *
+                  100
+                ).toFixed(2);
+                const growth =
+                  index > 0
+                    ? (
+                        ((data.total - monthlyScreenings[index - 1].total) /
+                          monthlyScreenings[index - 1].total) *
+                        100
+                      ).toFixed(1)
+                    : "0";
                 return (
                   <tr key={data.month} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-gray-900">{data.month}</td>
                     <td className="px-6 py-4 text-gray-600">{data.total}</td>
                     <td className="px-6 py-4 text-red-600">{data.positive}</td>
-                    <td className="px-6 py-4 text-green-600">{data.negative}</td>
-                    <td className="px-6 py-4 text-gray-600">{detectionRate}%</td>
+                    <td className="px-6 py-4 text-green-600">
+                      {data.negative}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {detectionRate}%
+                    </td>
                     <td className="px-6 py-4">
-                      <span className={`${parseFloat(growth) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {parseFloat(growth) >= 0 ? '+' : ''}{growth}%
+                      <span
+                        className={`${parseFloat(growth) >= 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {parseFloat(growth) >= 0 ? "+" : ""}
+                        {growth}%
                       </span>
                     </td>
                   </tr>
