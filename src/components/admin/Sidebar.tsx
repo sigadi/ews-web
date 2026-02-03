@@ -11,9 +11,13 @@ import {
   Shield,
   Menu,
   X,
+  Hospital,
+  CircleQuestionMark,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -21,16 +25,64 @@ export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/admin",
+    },
     { id: "users", label: "Manajemen User", icon: Users, href: "/admin/users" },
-    { id: "appointments", label: "Jadwal Skrining", icon: Calendar, href: "/admin/appointments" },
-    { id: "content", label: "Konten Edukasi", icon: FileText, href: "/admin/content" },
-    { id: "reports", label: "Laporan", icon: BarChart3, href: "/admin/reports" },
-    { id: "settings", label: "Pengaturan", icon: Settings, href: "/admin/settings" },
+    {
+      id: "appointments",
+      label: "Jadwal skrining",
+      icon: Calendar,
+      href: "/admin/appointments",
+    },
+    {
+      id: "questionnaires",
+      label: "Kuesioner",
+      icon: CircleQuestionMark,
+      href: "/admin/questionnaires",
+    },
+    {
+      id: "facilities",
+      label: "Fasilitas",
+      icon: Hospital,
+      href: "/admin/facilities",
+    },
+    {
+      id: "content",
+      label: "Konten Edukasi",
+      icon: FileText,
+      href: "/admin/content",
+    },
+    {
+      id: "reports",
+      label: "Laporan",
+      icon: BarChart3,
+      href: "/admin/reports",
+    },
+    {
+      id: "settings",
+      label: "Pengaturan",
+      icon: Settings,
+      href: "/admin/settings",
+    },
   ];
 
-  const handleLogout = () => {
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+
+      localStorage.removeItem("token");
+
+      router.push("/auth");
+
+      router.refresh();
+    } catch (error) {
+      console.error("Error saat logout:", error);
+      alert("Gagal keluar. Silakan coba lagi.");
+    }
   };
 
   const SidebarContent = () => (
