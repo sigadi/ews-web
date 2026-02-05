@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Plus, Edit, Trash2, Eye } from "lucide-react";
-import { collection, getDocs } from "firebase/firestore";
+import { Search, Plus, Edit, Trash2, Eye, Loader2 } from "lucide-react";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 interface Question {
   id: string;
@@ -19,6 +21,21 @@ export default function Questionnaires() {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    durationSeconds: 0,
+    isActive: true,
+    type: "resiko",
+    videoUrl: ""
+  });
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingLoading, setEditingLoading] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -131,7 +148,10 @@ export default function Questionnaires() {
               <option value="inactive">Tidak Aktif</option>
             </select>
 
-            <button className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors flex items-center gap-2">
+            <button
+              onClick={() => setIsAddOpen(true)}
+              className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors flex items-center gap-2"
+            >
               <Plus className="w-5 h-5" />
               <span className="hidden sm:inline">Tambah Kuesioner</span>
             </button>
@@ -162,7 +182,7 @@ export default function Questionnaires() {
                   </td>
                   <td className="px-6 py-4 text-gray-600">{qst.duration}</td>
                   <td className="px-6 py-4 text-gray-600">{qst.description}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 w-40">
                     <span
                       className={`px-3 py-1 rounded-full text-sm ${getStatusStyle(qst.isActive)}`}
                     >
@@ -179,12 +199,35 @@ export default function Questionnaires() {
                       </Link>
 
                       <button
+                        onClick={async () => {
+                          setEditingId(qst.id);
+                          setIsEditOpen(true);
+                          setEditingLoading(true);
+                          try {
+                            const snap = await getDoc(doc(db, "questionnaires", qst.id));
+                            const d = snap.data() as any;
+                            setFormData({
+                              title: d?.title || "",
+                              description: d?.description || "",
+                              durationSeconds: Number(d?.durationSeconds ?? 0),
+                              isActive: !!d?.isActive,
+                              type: d?.type || "resiko",
+                              videoUrl: d?.videoUrl || ""
+                            });
+                          } finally {
+                            setEditingLoading(false);
+                          }
+                        }}
                         className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                         title="Edit"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
+                        onClick={() => {
+                          setDeleteTarget({ id: qst.id, title: qst.title });
+                          setIsDeleteOpen(true);
+                        }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Hapus"
                       >
@@ -253,6 +296,317 @@ export default function Questionnaires() {
           </div>
         </div>
       </div>
+      
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="sm:max-w-150 bg-white max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Kuesioner</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setAdding(true);
+              try {
+                const ref = await addDoc(collection(db, "questionnaires"), {
+                  title: formData.title,
+                  description: formData.description,
+                  durationSeconds: formData.durationSeconds,
+                  isActive: formData.isActive,
+                  type: formData.type,
+                  videoUrl: formData.videoUrl || "",
+                  createdAt: new Date().toISOString()
+                });
+                setQuestions(prev => [
+                  {
+                    id: ref.id,
+                    title: formData.title,
+                    description: formData.description,
+                    duration: String(formData.durationSeconds),
+                    isActive: formData.isActive
+                  },
+                  ...prev
+                ]);
+                setIsAddOpen(false);
+                setFormData({
+                  title: "",
+                  description: "",
+                  durationSeconds: 0,
+                  isActive: true,
+                  type: "resiko",
+                  videoUrl: ""
+                });
+                alert("Kuesioner berhasil ditambahkan");
+              } catch (err: any) {
+                console.error("Gagal menambah kuesioner", err);
+                alert(`Gagal menambah kuesioner: ${err?.message || "Unknown error"}`);
+              } finally {
+                setAdding(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Judul</label>
+              <input
+                required
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md"
+                placeholder="Masukkan judul kuesioner"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Deskripsi</label>
+              <textarea
+                required
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md"
+                rows={4}
+                placeholder="Masukkan deskripsi kuesioner"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Durasi (detik)</label>
+                <input
+                  required
+                  type="number"
+                  min={0}
+                  value={formData.durationSeconds}
+                  onChange={(e) => setFormData({ ...formData, durationSeconds: Number(e.target.value) })}
+                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="15"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <select
+                  value={formData.isActive ? "active" : "inactive"}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.value === "active" })}
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Tidak Aktif</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tipe</label>
+                <input
+                  required
+                  type="text"
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="resiko"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Video URL</label>
+              <input
+                type="url"
+                value={formData.videoUrl}
+                onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md"
+                placeholder="https://..."
+              />
+            </div>
+            <DialogFooter>
+              <button
+                type="button"
+                onClick={() => setIsAddOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={adding}
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={adding}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+              >
+                {adding && <Loader2 className="w-4 h-4 animate-spin" />}
+                Tambah Kuesioner
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if (!open) setEditingId(null); }}>
+        <DialogContent className="sm:max-w-150 bg-white max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Kuesioner</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!editingId) return;
+              setAdding(true);
+              try {
+                await updateDoc(doc(db, "questionnaires", editingId), {
+                  title: formData.title,
+                  description: formData.description,
+                  durationSeconds: formData.durationSeconds,
+                  isActive: formData.isActive,
+                  type: formData.type,
+                  videoUrl: formData.videoUrl || "",
+                  updatedAt: new Date().toISOString()
+                });
+                setQuestions(prev =>
+                  prev.map(q =>
+                    q.id === editingId
+                      ? {
+                          id: editingId,
+                          title: formData.title,
+                          description: formData.description,
+                          duration: String(formData.durationSeconds),
+                          isActive: formData.isActive
+                        }
+                      : q
+                  )
+                );
+                setIsEditOpen(false);
+                setEditingId(null);
+                alert("Kuesioner berhasil diperbarui");
+              } catch (err: any) {
+                console.error("Gagal mengubah kuesioner", err);
+                alert(`Gagal mengubah kuesioner: ${err?.message || "Unknown error"}`);
+              } finally {
+                setAdding(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Judul</label>
+              <input
+                required
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md"
+                placeholder="Masukkan judul kuesioner"
+                disabled={editingLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Deskripsi</label>
+              <textarea
+                required
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md"
+                rows={4}
+                placeholder="Masukkan deskripsi kuesioner"
+                disabled={editingLoading}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Durasi (detik)</label>
+                <input
+                  required
+                  type="number"
+                  min={0}
+                  value={formData.durationSeconds}
+                  onChange={(e) => setFormData({ ...formData, durationSeconds: Number(e.target.value) })}
+                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="15"
+                  disabled={editingLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <select
+                  value={formData.isActive ? "active" : "inactive"}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.value === "active" })}
+                  className="w-full px-3 py-2 border rounded-md"
+                  disabled={editingLoading}
+                >
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Tidak Aktif</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tipe</label>
+                <input
+                  required
+                  type="text"
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="resiko"
+                  disabled={editingLoading}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Video URL</label>
+              <input
+                type="url"
+                value={formData.videoUrl}
+                onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md"
+                placeholder="https://..."
+                disabled={editingLoading}
+              />
+            </div>
+            <DialogFooter>
+              <button
+                type="button"
+                onClick={() => { setIsEditOpen(false); setEditingId(null); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={adding}
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={adding || editingLoading}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+              >
+                {adding && <Loader2 className="w-4 h-4 animate-spin" />}
+                Simpan Perubahan
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus kuesioner?</AlertDialogTitle>
+          </AlertDialogHeader>
+          <div className="text-sm text-gray-700">
+            {deleteTarget ? `Anda akan menghapus "${deleteTarget.title}"` : ""}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteOpen(false)}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteTarget) return;
+                try {
+                  await deleteDoc(doc(db, "questionnaires", deleteTarget.id));
+                  setQuestions(prev => prev.filter(q => q.id !== deleteTarget.id));
+                } catch (err: any) {
+                  alert(`Gagal menghapus: ${err?.message || "Unknown error"}`);
+                } finally {
+                  setIsDeleteOpen(false);
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import AdminLogin from "@/components/admin/AdminLogin";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";

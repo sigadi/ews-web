@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import DashboardHomeUI from "@/components/admin/DashboardHome";
 import { getDashboardData } from "@/features/dashboard/dashboard.service";
-import { mapStats, mapRiskDistribution } from "@/features/dashboard/dashboard.mapper";
+import { mapStats, mapRiskDistribution, mapRecentAppointments } from "@/features/dashboard/dashboard.mapper";
+import { Appointment } from "@/features/dashboard/dashboard.types";
 
 export default function AdminPage() {
   const [stats, setStats] = useState<any[]>([]);
   const [riskDistribution, setRiskDistribution] = useState<any[]>([]);
+  const [recentAppointments, setRecentAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,6 +25,7 @@ export default function AdminPage() {
       try {
         const rawData = await getDashboardData();
         setStats(mapStats(rawData));
+        setRecentAppointments(mapRecentAppointments(rawData.appointments, rawData.users, rawData.facilities));
       } finally {
         setLoading(false);
       }
@@ -38,7 +41,7 @@ export default function AdminPage() {
       stats={stats}
       monthlyData={[]}
       riskDistribution={riskDistribution}
-      recentAppointments={[]}
+      recentAppointments={recentAppointments}
     />
   );
 }

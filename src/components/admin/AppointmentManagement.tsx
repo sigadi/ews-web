@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Calendar,
   Search,
@@ -16,8 +16,31 @@ import {
   getDocs,
   query,
   orderBy,
+  doc,
+  updateDoc,
+  addDoc,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Appointment {
   id: string;
@@ -43,6 +66,21 @@ export default function AppointmentManagement() {
   const [loading, setLoading] = useState(true);
 
   const [page, setPage] = useState(1);
+
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // State for Add Appointment
+  const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
+  const [facilities, setFacilities] = useState<{ id: string; name: string }[]>([]);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [newAppointment, setNewAppointment] = useState({
+    patientId: "",
+    facilityId: "",
+    date: "",
+    time: "",
+    notes: "",
+  });
 
   const formatFirestoreDate = (value: any) => {
     if (!value) return "-";
@@ -102,50 +140,108 @@ export default function AppointmentManagement() {
     return "";
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [scheduleSnap, userSnap, facilitySnap] = await Promise.all([
-          getDocs(query(collection(db, "schedules"), orderBy("createdAt", "desc"))),
-          getDocs(collection(db, "users")),
-          getDocs(collection(db, "facilities")),
-        ]);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [scheduleSnap, userSnap, facilitySnap] = await Promise.all([
+        getDocs(query(collection(db, "schedules"), orderBy("createdAt", "desc"))),
+        getDocs(collection(db, "users")),
+        getDocs(collection(db, "facilities")),
+      ]);
 
-        const usersMap = new Map<string, any>();
-        userSnap.docs.forEach((d) => usersMap.set(d.id, d.data()));
+      const usersMap = new Map<string, any>();
+      const usersList: { id: string; name: string }[] = [];
+      userSnap.docs.forEach((d) => {
+        const data = d.data();
+        usersMap.set(d.id, data);
+        usersList.push({ id: d.id, name: data.name || "Unnamed User" });
+      });
+      setUsers(usersList);
 
-        const facilitiesMap = new Map<string, any>();
-        facilitySnap.docs.forEach((d) => facilitiesMap.set(d.id, d.data()));
+      const facilitiesMap = new Map<string, any>();
+      const facilitiesList: { id: string; name: string }[] = [];
+      facilitySnap.docs.forEach((d) => {
+        const data = d.data();
+        facilitiesMap.set(d.id, data);
+        facilitiesList.push({ id: d.id, name: data.name || "Unnamed Facility" });
+      });
+      setFacilities(facilitiesList);
 
-        const rows: Appointment[] = scheduleSnap.docs.map((doc) => {
-          const s = doc.data() as any;
-          const user = usersMap.get(s.userId) || {};
-          const facility = facilitiesMap.get(s.facilityId) || {};
+      const rows: Appointment[] = scheduleSnap.docs.map((doc) => {
+        const s = doc.data() as any;
+        const user = usersMap.get(s.userId) || {};
+        const facility = facilitiesMap.get(s.facilityId) || {};
 
-          return {
-            id: doc.id,
-            patientName: user.name || "-",
-            patientPhone: user.profile?.phone || "-",
-            dateISO: toISODate(s.date || s.createdAt),
-            dateLabel: formatFirestoreDate(s.date || s.createdAt),
-            time: s.time || "-",
-            location: s.facilityName || facility.name || "-",
-            type: "IVA Test",
-            status: (s.status || "PENDING").toUpperCase(),
-            notes: s.notes || "",
-          };
-        });
+        return {
+          id: doc.id,
+          patientName: user.name || "-",
+          patientPhone: user.profile?.phone || "-",
+          dateISO: toISODate(s.date || s.createdAt),
+          dateLabel: formatFirestoreDate(s.date || s.createdAt),
+          time: s.time || "-",
+          location: s.facilityName || facility.name || "-",
+          type: "IVA Test",
+          status: (s.status || "PENDING").toUpperCase(),
+          notes: s.notes || "",
+        };
+      });
 
-        setAppointments(rows);
-      } catch (err) {
-        console.error("Gagal load schedules", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+      setAppointments(rows);
+    } catch (err) {
+      console.error("Gagal load schedules", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleCreateAppointment = async () => {
+    if (
+      !newAppointment.patientId ||
+      !newAppointment.facilityId ||
+      !newAppointment.date ||
+      !newAppointment.time
+    ) {
+      alert("Mohon lengkapi semua field wajib");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const dateObj = new Date(newAppointment.date);
+      
+      const docData = {
+        userId: newAppointment.patientId,
+        facilityId: newAppointment.facilityId,
+        date: Timestamp.fromDate(dateObj),
+        time: newAppointment.time,
+        notes: newAppointment.notes,
+        status: "PENDING",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      };
+
+      await addDoc(collection(db, "schedules"), docData);
+      
+      await fetchData(); // Reload data to show the new appointment
+      setIsAddOpen(false);
+      setNewAppointment({
+        patientId: "",
+        facilityId: "",
+        date: "",
+        time: "",
+        notes: "",
+      });
+    } catch (error) {
+      console.error("Error creating appointment:", error);
+      alert("Gagal membuat jadwal");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
@@ -178,6 +274,28 @@ export default function AppointmentManagement() {
   useEffect(() => {
     setPage(1);
   }, [searchQuery, selectedDate, selectedStatus]);
+
+  const handleUpdateStatus = async (
+    id: string,
+    newStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED"
+  ) => {
+    try {
+      const docRef = doc(db, "schedules", id);
+      await updateDoc(docRef, { status: newStatus });
+
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+      );
+      
+      // Update selected appointment if open in detail
+      if (selectedAppointment && selectedAppointment.id === id) {
+        setSelectedAppointment(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (error) {
+      console.error("Gagal update status:", error);
+      alert("Gagal mengupdate status. Silakan coba lagi.");
+    }
+  };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -220,6 +338,53 @@ export default function AppointmentManagement() {
       default:
         return <Clock className="w-4 h-4" />;
     }
+  };
+
+  const getPaginationItems = () => {
+    const items = [];
+    const maxVisiblePages = 5; // Total max visible buttons (including first, last, current, ellipses)
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        items.push(i);
+      }
+    } else {
+      // Always show first page
+      items.push(1);
+
+      // Determine start and end of the middle block
+      let startPage = Math.max(2, page - 1);
+      let endPage = Math.min(totalPages - 1, page + 1);
+
+      // Adjust if we are near the beginning
+      if (page <= 3) {
+        endPage = 4;
+      }
+
+      // Adjust if we are near the end
+      if (page >= totalPages - 2) {
+        startPage = totalPages - 3;
+      }
+
+      // Add ellipsis after first page if needed
+      if (startPage > 2) {
+        items.push("...");
+      }
+
+      // Add middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        items.push(i);
+      }
+
+      // Add ellipsis before last page if needed
+      if (endPage < totalPages - 1) {
+        items.push("...");
+      }
+
+      // Always show last page
+      items.push(totalPages);
+    }
+    return items;
   };
 
   if (loading) {
@@ -270,7 +435,10 @@ export default function AppointmentManagement() {
               <option value="completed">Selesai</option>
             </select>
 
-            <button className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors flex items-center gap-2">
+            <button
+              onClick={() => setIsAddOpen(true)}
+              className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors flex items-center gap-2"
+            >
               <Plus className="w-5 h-5" />
               <span className="hidden sm:inline">Tambah Jadwal</span>
             </button>
@@ -336,20 +504,40 @@ export default function AppointmentManagement() {
                 <div className="flex gap-2">
                   {a.status === "PENDING" && (
                     <>
-                      <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                      <button
+                        onClick={() => handleUpdateStatus(a.id, "CONFIRMED")}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
                         Konfirmasi
                       </button>
-                      <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                      <button
+                        onClick={() => handleUpdateStatus(a.id, "CANCELLED")}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
                         Tolak
                       </button>
                     </>
                   )}
-                  {a.status !== "CANCELLED" && (
+                  {a.status === "CONFIRMED" && (
+                    <button
+                      onClick={() => handleUpdateStatus(a.id, "COMPLETED")}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Selesai
+                    </button>
+                  )}
+                  {/* {a.status !== "CANCELLED" && (
                     <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                       Edit
                     </button>
-                  )}
-                  <button className="px-4 py-2 border border-teal-600 text-teal-600 rounded-lg hover:bg-teal-50 transition-colors">
+                  )} */}
+                  <button
+                    onClick={() => {
+                      setSelectedAppointment(a);
+                      setIsDetailOpen(true);
+                    }}
+                    className="px-4 py-2 border border-teal-600 text-teal-600 rounded-lg hover:bg-teal-50 transition-colors"
+                  >
                     Detail
                   </button>
                 </div>
@@ -369,36 +557,258 @@ export default function AppointmentManagement() {
       </div>
 
       {/* Pagination */}
-      <div className="mt-6 flex items-center justify-between">
-        <p className="text-gray-600">
-          Menampilkan {(page - 1) * PAGE_SIZE + 1}-
-          {Math.min(page * PAGE_SIZE, filtered.length)} dari{" "}
-          {filtered.length} jadwal
-        </p>
-        <div className="flex gap-2">
-          <button
-            disabled={page === 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Sebelumnya
-          </button>
+      {filtered.length > 0 && (
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-gray-600">
+            Menampilkan {(page - 1) * PAGE_SIZE + 1}-
+            {Math.min(page * PAGE_SIZE, filtered.length)} dari{" "}
+            {filtered.length} jadwal
+          </p>
+          <div className="flex gap-2">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Sebelumnya
+            </button>
 
-          <button className="px-4 py-2 bg-teal-600 text-white rounded-lg">
-            {page}
-          </button>
+            <div className="flex items-center gap-1">
+              {getPaginationItems().map((p, i) =>
+                typeof p === "number" ? (
+                  <button
+                    key={i}
+                    onClick={() => setPage(p)}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      page === p
+                        ? "bg-teal-600 text-white"
+                        : "border border-gray-300 hover:bg-gray-50 text-gray-700"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ) : (
+                  <span key={i} className="px-2 text-gray-400">
+                    ...
+                  </span>
+                )
+              )}
+            </div>
 
-          <button
-            disabled={page === totalPages}
-            onClick={() =>
-              setPage((p) => Math.min(totalPages, p + 1))
-            }
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Selanjutnya
-          </button>
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Selanjutnya
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="bg-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Buat Jadwal Baru</DialogTitle>
+            <DialogDescription>
+              Isi formulir untuk membuat jadwal skrining baru.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Pasien</Label>
+              <Select
+                value={newAppointment.patientId}
+                onValueChange={(val: any) =>
+                  setNewAppointment({ ...newAppointment, patientId: val })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Pasien" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Lokasi / Fasilitas</Label>
+              <Select
+                value={newAppointment.facilityId}
+                onValueChange={(val: any) =>
+                  setNewAppointment({ ...newAppointment, facilityId: val })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Fasilitas Kesehatan" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {facilities.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tanggal</Label>
+                <Input
+                  type="date"
+                  value={newAppointment.date}
+                  onChange={(e) =>
+                    setNewAppointment({ ...newAppointment, date: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Waktu</Label>
+                <Input
+                  type="time"
+                  value={newAppointment.time}
+                  onChange={(e) =>
+                    setNewAppointment({ ...newAppointment, time: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Catatan (Opsional)</Label>
+              <Textarea
+                placeholder="Tambahkan catatan jika perlu..."
+                value={newAppointment.notes}
+                onChange={(e) =>
+                  setNewAppointment({ ...newAppointment, notes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+              onClick={handleCreateAppointment}
+              disabled={loading}
+            >
+              {loading ? "Menyimpan..." : "Simpan Jadwal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="bg-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detail Jadwal</DialogTitle>
+            <DialogDescription>
+              Informasi lengkap mengenai jadwal skrining.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500 mb-1">Pasien</p>
+                  <p className="font-medium text-gray-900">
+                    {selectedAppointment.patientName}
+                  </p>
+                  <p className="text-gray-600">{selectedAppointment.patientPhone}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 mb-1">Status</p>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs inline-flex items-center gap-1 ${getStatusStyle(
+                      selectedAppointment.status
+                    )}`}
+                  >
+                    {getStatusIcon(selectedAppointment.status)}
+                    {getStatusLabel(selectedAppointment.status)}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-gray-500 mb-1">Tanggal & Waktu</p>
+                  <p className="font-medium text-gray-900">
+                    {selectedAppointment.dateLabel}
+                  </p>
+                  <p className="text-gray-600">{selectedAppointment.time}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 mb-1">Lokasi</p>
+                  <p className="font-medium text-gray-900">
+                    {selectedAppointment.location}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-gray-500 mb-1">Jenis Pemeriksaan</p>
+                  <p className="font-medium text-gray-900">
+                    {selectedAppointment.type}
+                  </p>
+                </div>
+                {selectedAppointment.notes && (
+                  <div className="col-span-2">
+                    <p className="text-gray-500 mb-1">Catatan</p>
+                    <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                      {selectedAppointment.notes}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {(selectedAppointment.status === "PENDING" ||
+                selectedAppointment.status === "CONFIRMED") && (
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => {
+                      handleUpdateStatus(selectedAppointment.id, "CANCELLED");
+                      setIsDetailOpen(false);
+                    }}
+                  >
+                    {selectedAppointment.status === "PENDING"
+                      ? "Tolak"
+                      : "Batalkan"}
+                  </Button>
+
+                  {selectedAppointment.status === "PENDING" && (
+                    <Button
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => {
+                        handleUpdateStatus(selectedAppointment.id, "CONFIRMED");
+                        setIsDetailOpen(false);
+                      }}
+                    >
+                      Konfirmasi
+                    </Button>
+                  )}
+
+                  {selectedAppointment.status === "CONFIRMED" && (
+                    <Button
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => {
+                        handleUpdateStatus(selectedAppointment.id, "COMPLETED");
+                        setIsDetailOpen(false);
+                      }}
+                    >
+                      Selesai
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

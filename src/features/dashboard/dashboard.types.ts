@@ -22,11 +22,15 @@ export interface RiskDistribution {
 }
 
 export interface Appointment {
-  id: number;
+  id: string;
   name: string;
+  phone: string;
   date: string;
   time: string;
-  status: 'scheduled' | 'confirmed' | 'pending';
+  location: string;
+  type: string;
+  notes: string;
+  status: 'scheduled' | 'confirmed' | 'pending' | 'completed' | 'cancelled';
 }
 
 
