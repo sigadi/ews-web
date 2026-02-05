@@ -4,9 +4,24 @@ import {
   AlertCircle,
   Activity,
 } from 'lucide-react';
-import { DashboardStat, ChartDataInput, Appointment } from './dashboard.types';
+import { DashboardStat, ChartDataInput, Appointment, MonthlyData } from './dashboard.types';
+
+const parseDate = (value: any): Date | null => {
+  if (!value) return null;
+  if (typeof value === 'number') return new Date(value);
+  if (typeof value === 'object' && value.seconds) return new Date(value.seconds * 1000);
+  if (typeof value === 'string') {
+    const cleaned = value.replace(" at ", " ").replace(/ UTC\+\d+/, "");
+    const d = new Date(cleaned);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+};
 
 export function mapStats(data: any): DashboardStat[] {
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  
   return [
     {
       label: 'Total Pengguna',
@@ -25,19 +40,57 @@ export function mapStats(data: any): DashboardStat[] {
     },
     {
       label: 'Kasus Risiko Tinggi',
-      value: data.screenings.filter((s: any) => s.risk === 'high').length.toString(),
+      value: data.users.filter((u: any) => u.riskLabel === 'HIGH_RISK').length.toString(),
       trend: 'down',
       icon: AlertCircle,
       color: 'bg-red-500',
     },
     {
       label: 'Pemeriksaan Bulan Ini',
-      value: data.screenings.length.toString(),
+      value: data.screenings.filter((s: any) => {
+        const date = parseDate(s.finishedAt || s.createdAt || s.date);
+        return date && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      }).length.toString(),
       trend: 'up',
       icon: Activity,
       color: 'bg-emerald-500',
     },
   ];
+}
+
+export function mapMonthlyData(screenings: any[], months: number = 12): MonthlyData[] {
+  const now = new Date();
+  const buckets: { [key: string]: { pemeriksaan: number; risikoTinggi: number } } = {};
+  const labels: string[] = [];
+
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const label =
+      d.toLocaleString("id-ID", { month: "short" }) + " " + d.getFullYear();
+    labels.push(label);
+    buckets[label] = { pemeriksaan: 0, risikoTinggi: 0 };
+  }
+
+  screenings.forEach((s: any) => {
+    const date = parseDate(s.finishedAt || s.createdAt || s.date);
+    if (!date) return;
+    const label =
+      date.toLocaleString("id-ID", { month: "short" }) +
+      " " +
+      date.getFullYear();
+    if (buckets[label]) {
+      buckets[label].pemeriksaan += 1;
+      if (s.result === "HIGH_RISK") {
+        buckets[label].risikoTinggi += 1;
+      }
+    }
+  });
+
+  return labels.map((label) => ({
+    month: label,
+    pemeriksaan: buckets[label].pemeriksaan,
+    risikoTinggi: buckets[label].risikoTinggi,
+  }));
 }
 
 const formatFirestoreDate = (value: any) => {
@@ -106,16 +159,16 @@ export function mapRecentAppointments(appointments: any[], users: any[], facilit
     });
 }
 
-type RiskDistribution = {
-  level: 'Rendah' | 'Sedang' | 'Tinggi';
-  count: number;
-};
-
 export function mapRiskDistribution(
-  input: readonly RiskDistribution[]
+  users: any[]
 ): ChartDataInput[] {
-  return input.map(item => ({
-    name: `Risiko ${item.level}`,
-    value: item.count,
-  }));
+  const highRisk = users.filter((u) => u.riskLabel === 'HIGH_RISK').length;
+  const mediumRisk = users.filter((u) => u.riskLabel === 'MEDIUM_RISK').length;
+  const lowRisk = users.filter((u) => u.riskLabel === 'LOW_RISK').length;
+
+  return [
+    { name: 'Risiko Rendah', value: lowRisk, color: '#10b981' },
+    { name: 'Risiko Sedang', value: mediumRisk, color: '#f59e0b' },
+    { name: 'Risiko Tinggi', value: highRisk, color: '#ef4444' },
+  ];
 }

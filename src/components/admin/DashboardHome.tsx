@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Calendar, AlertCircle, TrendingUp, Activity, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Clock, CheckCircle, XCircle } from 'lucide-react';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 import {
   DashboardStat,
   MonthlyData,
-  RiskDistribution,
   ChartDataInput,
   Appointment,
 } from '@/features/dashboard/dashboard.types';
@@ -21,13 +20,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
-const ICON_MAP = {
-  users: Users,
-  calendar: Calendar,
-  alert: AlertCircle,
-  activity: Activity,
-} as const;
 
 interface Props {
   stats: DashboardStat[];
@@ -127,11 +119,6 @@ export default function DashboardHome({
                 <div className={`${stat.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
                   <Icon className="w-6 h-6 text-white" />
                 </div>
-                <span className={`px-2 py-1 rounded-lg text-sm ${
-                  stat.trend === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {stat.change}
-                </span>
               </div>
               <p className="text-gray-600 mb-1">{stat.label}</p>
               <p className="text-gray-900">{stat.value}</p>
@@ -150,7 +137,7 @@ export default function DashboardHome({
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
               <Legend />
@@ -179,7 +166,7 @@ export default function DashboardHome({
                 ))}
               </Pie>
               <Tooltip />
-              <Legend verticalAlign="bottom" height={36}/>
+              <Legend verticalAlign="bottom" height={36} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -213,7 +200,7 @@ export default function DashboardHome({
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <button 
+                    <button
                       className="text-teal-600 hover:text-teal-700"
                       onClick={() => {
                         setSelectedAppointment(appointment);
@@ -291,41 +278,41 @@ export default function DashboardHome({
 
               {(selectedAppointment.status === "pending" ||
                 selectedAppointment.status === "confirmed") && (
-                <div className="flex gap-3 pt-4 border-t">
-                  <Button
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => {
-                      handleUpdateStatus(selectedAppointment.id, "CANCELLED");
-                    }}
-                  >
-                    {selectedAppointment.status === "pending"
-                      ? "Tolak"
-                      : "Batalkan"}
-                  </Button>
-
-                  {selectedAppointment.status === "pending" && (
+                  <div className="flex gap-3 pt-4 border-t">
                     <Button
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                       onClick={() => {
-                        handleUpdateStatus(selectedAppointment.id, "CONFIRMED");
+                        handleUpdateStatus(selectedAppointment.id, "CANCELLED");
                       }}
                     >
-                      Konfirmasi
+                      {selectedAppointment.status === "pending"
+                        ? "Tolak"
+                        : "Batalkan"}
                     </Button>
-                  )}
 
-                  {selectedAppointment.status === "confirmed" && (
-                    <Button
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                      onClick={() => {
-                        handleUpdateStatus(selectedAppointment.id, "COMPLETED");
-                      }}
-                    >
-                      Selesai
-                    </Button>
-                  )}
-                </div>
-              )}
+                    {selectedAppointment.status === "pending" && (
+                      <Button
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => {
+                          handleUpdateStatus(selectedAppointment.id, "CONFIRMED");
+                        }}
+                      >
+                        Konfirmasi
+                      </Button>
+                    )}
+
+                    {selectedAppointment.status === "confirmed" && (
+                      <Button
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => {
+                          handleUpdateStatus(selectedAppointment.id, "COMPLETED");
+                        }}
+                      >
+                        Selesai
+                      </Button>
+                    )}
+                  </div>
+                )}
             </div>
           )}
         </DialogContent>

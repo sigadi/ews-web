@@ -11,6 +11,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  getDoc,
 } from "firebase/firestore";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import {
@@ -54,6 +55,14 @@ export default function QuestionnaireDetail({
 }: {
   questionnaireId: string;
 }) {
+  const [meta, setMeta] = useState<{
+    title: string;
+    description: string;
+    durationSeconds: number;
+    isActive: boolean;
+    type?: string;
+    videoUrl?: string;
+  } | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,6 +87,22 @@ export default function QuestionnaireDetail({
       setLoading(true);
 
       try {
+        const docRef = doc(db, "questionnaires", questionnaireId);
+        const metaSnap = await getDoc(docRef);
+        if (metaSnap.exists()) {
+          const d = metaSnap.data() as any;
+          setMeta({
+            title: d.title || "-",
+            description: d.description || "-",
+            durationSeconds: d.durationSeconds || 0,
+            isActive: !!d.isActive,
+            type: d.type,
+            videoUrl: d.videoUrl,
+          });
+        } else {
+          setMeta(null);
+        }
+
         const q = query(
           collection(db, "questionnaires", questionnaireId, "question"),
           orderBy("order", "asc"),
@@ -220,6 +245,39 @@ export default function QuestionnaireDetail({
           Daftar Pertanyaan
         </h1>
       </div>
+      {meta && (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <p className="text-gray-900 text-lg">{meta.title}</p>
+              <p className="text-gray-600 mt-1">{meta.description}</p>
+            </div>
+            <span
+              className={`px-3 py-1 rounded-full text-sm ${
+                meta.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {meta.isActive ? "Aktif" : "Tidak Aktif"}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-600">Durasi</p>
+              <p className="text-gray-900">
+                {Math.max(1, Math.round((meta.durationSeconds || 0) / 60))} menit
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-600">Tipe</p>
+              <p className="text-gray-900">{meta.type || "-"}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-600">Video</p>
+              <p className="text-gray-900 break-all">{meta.videoUrl || "-"}</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <Button
           onClick={handleAddClick}
@@ -344,7 +402,7 @@ export default function QuestionnaireDetail({
               </div>
 
               <div className="space-y-3">
-                {formData.options.map((opt, index) => (
+                {formData.options.map((opt) => (
                   <div key={opt.id} className="flex gap-3 items-start">
                     <div className="flex-1">
                       <Input

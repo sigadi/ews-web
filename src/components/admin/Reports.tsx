@@ -1,11 +1,10 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { Download, Calendar, TrendingUp, Users, FileText } from "lucide-react";
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -16,39 +15,189 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function Reports() {
-  const monthlyScreenings = [
-    { month: "Jan", total: 120, positive: 15, negative: 105 },
-    { month: "Feb", total: 135, positive: 18, negative: 117 },
-    { month: "Mar", total: 148, positive: 12, negative: 136 },
-    { month: "Apr", total: 142, positive: 20, negative: 122 },
-    { month: "Mei", total: 160, positive: 17, negative: 143 },
-    { month: "Jun", total: 156, positive: 23, negative: 133 },
-  ];
+  const [usersRaw, setUsersRaw] = useState<any[]>([]);
+  const [screeningsRaw, setScreeningsRaw] = useState<any[]>([]);
+  const [startDate, setStartDate] = useState<string>(
+    new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10)
+  );
+  const [endDate, setEndDate] = useState<string>(new Date().toISOString().slice(0, 10));
 
-  const ageDistribution = [
-    { range: "20-25", count: 180 },
-    { range: "26-30", count: 320 },
-    { range: "31-35", count: 285 },
-    { range: "36-40", count: 210 },
-    { range: "41-45", count: 145 },
-    { range: "46-50", count: 94 },
-  ];
+  const parseDate = (value: any): Date | null => {
+    if (!value) return null;
+    if (typeof value === "number") return new Date(value);
+    if (typeof value === "object" && value.seconds) return new Date(value.seconds * 1000);
+    if (typeof value === "string") {
+      const cleaned = value.replace(" at ", " ").replace(/ UTC\+\d+/, "");
+      const d = new Date(cleaned);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  };
 
-  const riskLevels = [
-    { name: "Rendah", value: 780, color: "#10b981" },
-    { name: "Sedang", value: 431, color: "#f59e0b" },
-    { name: "Tinggi", value: 23, color: "#ef4444" },
-  ];
+  const getAge = (birthDateStr?: string, explicitAge?: number): number => {
+    if (explicitAge && explicitAge > 0) return explicitAge;
+    if (!birthDateStr) return 0;
+    const parts = birthDateStr.split("/");
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      if (!isNaN(d.getTime())) {
+        const today = new Date();
+        let age = today.getFullYear() - d.getFullYear();
+        const m = today.getMonth() - d.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+        return age;
+      }
+    }
+    const d = new Date(birthDateStr);
+    if (!isNaN(d.getTime())) {
+      const today = new Date();
+      let age = today.getFullYear() - d.getFullYear();
+      const m = today.getMonth() - d.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+      return age;
+    }
+    return 0;
+  };
 
-  const regionData = [
-    { region: "Jakarta Pusat", screenings: 245, highRisk: 8 },
-    { region: "Jakarta Selatan", screenings: 198, highRisk: 5 },
-    { region: "Jakarta Timur", screenings: 167, highRisk: 4 },
-    { region: "Jakarta Barat", screenings: 153, highRisk: 3 },
-    { region: "Jakarta Utara", screenings: 121, highRisk: 3 },
-  ];
+  useEffect(() => {
+    (async () => {
+      const usersSnap = await getDocs(collection(db, "users"));
+      const screeningsSnap = await getDocs(collection(db, "screenings"));
+
+      const users = usersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const screenings = screeningsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      setUsersRaw(users);
+      setScreeningsRaw(screenings);
+    })();
+  }, []);
+
+  const usersFiltered = useMemo(() => {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    return usersRaw.filter((u) => {
+      const d = parseDate(u.createdAt);
+      return d && d >= start && d <= end;
+    });
+  }, [usersRaw, startDate, endDate]);
+
+  const screeningsFiltered = useMemo(() => {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    return screeningsRaw.filter((s) => {
+      const d = parseDate(s.finishedAt);
+      return d && d >= start && d <= end;
+    });
+  }, [screeningsRaw, startDate, endDate]);
+
+  const summary = useMemo(() => {
+    const totalUsers = usersFiltered.length;
+    const totalScreenings = screeningsFiltered.length;
+    const highRiskCases = screeningsFiltered.filter((s) => s.result === "HIGH_RISK").length;
+    const detectionRate = totalScreenings > 0 ? (highRiskCases / totalScreenings) * 100 : 0;
+    return { totalUsers, totalScreenings, highRiskCases, detectionRate };
+  }, [usersFiltered, screeningsFiltered]);
+
+  const riskLevels = useMemo(() => {
+    const LOW_RISK = usersFiltered.filter((u) => u.riskLabel === "LOW_RISK").length;
+    const MEDIUM_RISK = usersFiltered.filter((u) => u.riskLabel === "MEDIUM_RISK").length;
+    const HIGH_RISK = usersFiltered.filter((u) => u.riskLabel === "HIGH_RISK").length;
+    return [
+      { name: "Rendah", value: LOW_RISK, color: "#10b981" },
+      { name: "Sedang", value: MEDIUM_RISK, color: "#f59e0b" },
+      { name: "Tinggi", value: HIGH_RISK, color: "#ef4444" },
+    ];
+  }, [usersFiltered]);
+
+  const monthlyScreenings = useMemo(() => {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    const labels: string[] = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+    while (cursor <= endMonth) {
+      labels.push(cursor.toLocaleString("id-ID", { month: "short" }) + " " + cursor.getFullYear());
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    const buckets: Record<string, { total: number; lowRisk: number; mediumRisk: number; highRisk: number }> = {};
+    labels.forEach((l) => {
+      buckets[l] = { total: 0, lowRisk: 0, mediumRisk: 0, highRisk: 0 };
+    });
+    screeningsFiltered.forEach((s) => {
+      const date = parseDate(s.finishedAt);
+      if (!date) return;
+      const label = date.toLocaleString("id-ID", { month: "short" }) + " " + date.getFullYear();
+      if (!buckets[label]) return;
+      buckets[label].total += 1;
+      if (s.result === "LOW_RISK") buckets[label].lowRisk += 1;
+      else if (s.result === "MEDIUM_RISK") buckets[label].mediumRisk += 1;
+      else if (s.result === "HIGH_RISK") buckets[label].highRisk += 1;
+    });
+    return labels.map((l) => ({ month: l, ...buckets[l] }));
+  }, [screeningsFiltered, startDate, endDate]);
+
+  const ageDistribution = useMemo(() => {
+    const ranges = [
+      { label: "20-25", min: 20, max: 25 },
+      { label: "26-30", min: 26, max: 30 },
+      { label: "31-35", min: 31, max: 35 },
+      { label: "36-40", min: 36, max: 40 },
+      { label: "41-45", min: 41, max: 45 },
+      { label: "46-50", min: 46, max: 50 },
+    ];
+    const ageBuckets: Record<string, number> = {};
+    ranges.forEach((r) => (ageBuckets[r.label] = 0));
+    usersFiltered.forEach((u) => {
+      const age = getAge(u.profile?.birthDate, u.profile?.age);
+      ranges.forEach((r) => {
+        if (age >= r.min && age <= r.max) ageBuckets[r.label] += 1;
+      });
+    });
+    return ranges.map((r) => ({ range: r.label, count: ageBuckets[r.label] }));
+  }, [usersFiltered]);
+
+  const exportReport = () => {
+    const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines: string[] = [];
+    lines.push(`Periode,${esc(startDate)} s/d ${esc(endDate)}`);
+    lines.push("");
+    lines.push(["Ringkasan", "Total Pengguna", "Total Skrining", "Kasus Risiko Tinggi"].map(esc).join(","));
+    lines.push(["", summary.totalUsers, summary.totalScreenings, summary.highRiskCases].map(esc).join(","));
+    lines.push("");
+    lines.push(["Distribusi Risiko", "Nama", "Jumlah"].map(esc).join(","));
+    riskLevels.forEach((r) => {
+      lines.push(["", r.name, r.value].map(esc).join(","));
+    });
+    lines.push("");
+    lines.push(["Distribusi Usia", "Rentang", "Jumlah"].map(esc).join(","));
+    ageDistribution.forEach((a) => {
+      lines.push(["", a.range, a.count].map(esc).join(","));
+    });
+    lines.push("");
+    lines.push(["Statistik Bulanan", "Bulan", "Total", "Low_Risk", "Medium_Risk", "High_Risk"].map(esc).join(","));
+    monthlyScreenings.forEach((m) => {
+      lines.push(["", m.month, m.total, m.lowRisk, m.mediumRisk, m.highRisk].map(esc).join(","));
+    });
+    const content = lines.join("\n");
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `laporan_${startDate}_sd_${endDate}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="p-4 lg:p-8">
@@ -70,7 +219,8 @@ export default function Reports() {
                 <label className="block text-gray-600 mb-1">Dari Tanggal</label>
                 <input
                   type="date"
-                  defaultValue="2024-01-01"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
@@ -80,13 +230,14 @@ export default function Reports() {
                 </label>
                 <input
                   type="date"
-                  defaultValue="2024-11-28"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             </div>
           </div>
-          <button className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors flex items-center gap-2">
+          <button onClick={exportReport} className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors flex items-center gap-2">
             <Download className="w-5 h-5" />
             Export Laporan
           </button>
@@ -94,7 +245,7 @@ export default function Reports() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -103,7 +254,7 @@ export default function Reports() {
             <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
           <p className="text-gray-600 mb-1">Total Pengguna</p>
-          <p className="text-gray-900 mb-1">1,234</p>
+          <p className="text-gray-900 mb-1">{summary.totalUsers}</p>
           <p className="text-green-600">+12% dari bulan lalu</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-6">
@@ -114,7 +265,7 @@ export default function Reports() {
             <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
           <p className="text-gray-600 mb-1">Total Skrining</p>
-          <p className="text-gray-900 mb-1">861</p>
+          <p className="text-gray-900 mb-1">{summary.totalScreenings}</p>
           <p className="text-green-600">+8% dari bulan lalu</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-6">
@@ -125,58 +276,13 @@ export default function Reports() {
             <TrendingUp className="w-5 h-5 text-red-600" />
           </div>
           <p className="text-gray-600 mb-1">Kasus Risiko Tinggi</p>
-          <p className="text-gray-900 mb-1">23</p>
+          <p className="text-gray-900 mb-1">{summary.highRiskCases}</p>
           <p className="text-red-600">+3 dari bulan lalu</p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <FileText className="w-6 h-6 text-green-600" />
-            </div>
-            <TrendingUp className="w-5 h-5 text-green-600" />
-          </div>
-          <p className="text-gray-600 mb-1">Tingkat Deteksi</p>
-          <p className="text-gray-900 mb-1">2.67%</p>
-          <p className="text-gray-600">dari total skrining</p>
         </div>
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Monthly Screenings Trend */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-gray-900 mb-6">Tren Skrining Bulanan</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={monthlyScreenings}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="total"
-                stroke="#14b8a6"
-                strokeWidth={2}
-                name="Total"
-              />
-              <Line
-                type="monotone"
-                dataKey="positive"
-                stroke="#ef4444"
-                strokeWidth={2}
-                name="Positif"
-              />
-              <Line
-                type="monotone"
-                dataKey="negative"
-                stroke="#10b981"
-                strokeWidth={2}
-                name="Negatif"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
 
         {/* Risk Distribution */}
         <div className="bg-white rounded-xl shadow-sm p-6">
@@ -218,22 +324,6 @@ export default function Reports() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-
-        {/* Regional Data */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-gray-900 mb-6">Data per Wilayah</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={regionData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="region" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="screenings" fill="#14b8a6" name="Skrining" />
-              <Bar dataKey="highRisk" fill="#ef4444" name="Risiko Tinggi" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
       </div>
 
       {/* Detailed Statistics Table */}
@@ -250,51 +340,28 @@ export default function Reports() {
                   Total Skrining
                 </th>
                 <th className="px-6 py-3 text-left text-gray-700">
-                  Hasil Positif
+                  Low Risk
                 </th>
                 <th className="px-6 py-3 text-left text-gray-700">
-                  Hasil Negatif
+                  Medium Risk
                 </th>
                 <th className="px-6 py-3 text-left text-gray-700">
-                  Tingkat Deteksi
-                </th>
-                <th className="px-6 py-3 text-left text-gray-700">
-                  Pertumbuhan
+                  High Risk
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {monthlyScreenings.map((data, index) => {
-                const detectionRate = (
-                  (data.positive / data.total) *
-                  100
-                ).toFixed(2);
-                const growth =
-                  index > 0
-                    ? (
-                        ((data.total - monthlyScreenings[index - 1].total) /
-                          monthlyScreenings[index - 1].total) *
-                        100
-                      ).toFixed(1)
-                    : "0";
+              {monthlyScreenings.map((data) => {
                 return (
                   <tr key={data.month} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-gray-900">{data.month}</td>
                     <td className="px-6 py-4 text-gray-600">{data.total}</td>
-                    <td className="px-6 py-4 text-red-600">{data.positive}</td>
-                    <td className="px-6 py-4 text-green-600">
-                      {data.negative}
+                    <td className="px-6 py-4 text-green-600">{data.lowRisk}</td>
+                    <td className="px-6 py-4 text-yellow-600">
+                      {data.mediumRisk}
                     </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {detectionRate}%
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`${parseFloat(growth) >= 0 ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {parseFloat(growth) >= 0 ? "+" : ""}
-                        {growth}%
-                      </span>
+                    <td className="px-6 py-4 text-red-600">
+                      {data.highRisk}
                     </td>
                   </tr>
                 );

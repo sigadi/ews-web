@@ -36,6 +36,7 @@ import {
 interface Facilities {
   id: string;
   name: string;
+  address?: string;
   createdAt?: string;
 }
 
@@ -56,6 +57,7 @@ export default function Facilities() {
   // Form State
   const [formData, setFormData] = useState({
     name: "",
+    address: "",
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,6 +74,7 @@ export default function Facilities() {
           return {
             id: doc.id,
             name: d.name || "-",
+            address: d.address || "-",
             createdAt: d.createdAt,
           };
         });
@@ -105,12 +108,12 @@ export default function Facilities() {
   }, [searchQuery]);
 
   const handleAddClick = () => {
-    setFormData({ name: "" });
+    setFormData({ name: "", address: "" });
     setIsAdding(true);
   };
 
   const handleEditClick = (facility: Facilities) => {
-    setFormData({ name: facility.name });
+    setFormData({ name: facility.name, address: facility.address || "" });
     setEditingFacility(facility);
   };
 
@@ -119,11 +122,11 @@ export default function Facilities() {
       if (editingFacility) {
         // Update existing
         const docRef = doc(db, "facilities", editingFacility.id);
-        await updateDoc(docRef, { name: formData.name });
+        await updateDoc(docRef, { name: formData.name, address: formData.address });
 
         setFacilities((prev) =>
           prev.map((f) =>
-            f.id === editingFacility.id ? { ...f, name: formData.name } : f,
+            f.id === editingFacility.id ? { ...f, name: formData.name, address: formData.address } : f,
           ),
         );
       } else {
@@ -131,11 +134,12 @@ export default function Facilities() {
         const colRef = collection(db, "facilities");
         const docRef = await addDoc(colRef, {
           name: formData.name,
+          address: formData.address,
           createdAt: new Date().toISOString(),
         });
 
         setFacilities((prev) => [
-          { id: docRef.id, name: formData.name },
+          { id: docRef.id, name: formData.name, address: formData.address },
           ...prev,
         ]);
       }
@@ -166,7 +170,10 @@ export default function Facilities() {
 
   const filteredFacilities = facilities.filter((fcs) => {
     const q = searchQuery.toLowerCase();
-    return fcs.name.toLowerCase().includes(q);
+    return (
+      fcs.name.toLowerCase().includes(q) ||
+      (fcs.address && fcs.address.toLowerCase().includes(q))
+    );
   });
 
   const totalPages = Math.ceil(filteredFacilities.length / pageSize);
@@ -220,10 +227,13 @@ export default function Facilities() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-gray-700 w-3/4">
+                <th className="px-6 py-4 text-left text-gray-700 w-1/3">
                   Nama Fasilitas
                 </th>
-                <th className="px-6 py-4 text-left text-gray-700 w-1/4">
+                <th className="px-6 py-4 text-left text-gray-700 w-1/3">
+                  Alamat
+                </th>
+                <th className="px-6 py-4 text-left text-gray-700 w-1/3">
                   Aksi
                 </th>
               </tr>
@@ -234,6 +244,11 @@ export default function Facilities() {
                   <td className="px-6 py-4">
                     <div>
                       <p className="text-gray-900">{fcs.name}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="text-gray-900">{fcs.address || "-"}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -345,6 +360,19 @@ export default function Facilities() {
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address" className="text-right">
+                Alamat
+              </Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
                 }
                 className="col-span-3"
               />
