@@ -69,16 +69,21 @@ import { getDocs, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export async function getDashboardData() {
-  const usersSnap = await getDocs(collection(db, 'users'));
-  const appointmentsSnap = await getDocs(collection(db, 'schedules'));
-  const screeningsSnap = await getDocs(collection(db, 'screenings'));
-  const facilitiesSnap = await getDocs(collection(db, 'facilities'));
+  try {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    const appointmentsSnap = await getDocs(collection(db, 'schedules'));
+    const screeningsSnap = await getDocs(collection(db, 'screenings'));
+    const facilitiesSnap = await getDocs(collection(db, 'facilities'));
 
-  return {
-    users: usersSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    totalUsers: usersSnap.size,
-    appointments: appointmentsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    screenings: screeningsSnap.docs.map(d => d.data()),
-    facilities: facilitiesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-  };
+    return {
+      users: usersSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      totalUsers: usersSnap.size,
+      appointments: appointmentsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      screenings: screeningsSnap.docs.map(d => d.data()),
+      facilities: facilitiesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    };
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
+    throw error;
+  }
 }

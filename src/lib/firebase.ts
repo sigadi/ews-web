@@ -13,11 +13,18 @@ const config = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Debug config
-console.log("Firebase Config:", {
-  ...config,
-  apiKey: config.apiKey ? "***" : undefined,
-});
+// Debug config in development
+if (process.env.NODE_ENV === "development") {
+  const missingKeys = Object.entries(config)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingKeys.length > 0) {
+    console.error("❌ Firebase configuration is missing keys:", missingKeys);
+  } else {
+    console.log("✅ Firebase initialized successfully");
+  }
+}
 
 const app = getApps().length ? getApp() : initializeApp(config);
 

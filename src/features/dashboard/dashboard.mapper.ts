@@ -33,7 +33,10 @@ export function mapStats(data: any): DashboardStat[] {
     },
     {
       label: 'Jadwal Skrining',
-      value: data.appointments.length.toString(),
+      value: data.appointments.filter((a: any) => {
+        const date = parseDate(a.date || a.scheduledAt || a.time);
+        return date && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      }).length.toString(),
       trend: 'up',
       icon: Calendar,
       color: 'bg-teal-500',
