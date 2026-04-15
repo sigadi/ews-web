@@ -19,7 +19,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <DashboardHome />;
+        return <DashboardHome stats={[]} monthlyData={[]} riskDistribution={[]} recentAppointments={[]} />;
       case 'users':
         return <UserManagement />;
       case 'appointments':
@@ -31,16 +31,16 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       case 'settings':
         return <Settings />;
       default:
-        return <DashboardHome />;
+        return <DashboardHome stats={[]} monthlyData={[]} riskDistribution={[]} recentAppointments={[]} />;
     }
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        onLogout={onLogout}
+        // currentPage={currentPage}
+        // onPageChange={setCurrentPage}
+        // onLogout={onLogout}
       />
       <div className="flex-1 lg:ml-64">
         {renderPage()}

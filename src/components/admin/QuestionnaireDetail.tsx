@@ -50,6 +50,14 @@ type Question = {
   options: Option[];
 };
 
+function createOptionId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `option-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export default function QuestionnaireDetail({
   questionnaireId,
 }: {
@@ -130,8 +138,8 @@ export default function QuestionnaireDetail({
       text: "",
       order: questions.length + 1,
       options: [
-        { id: crypto.randomUUID(), label: "Ya", score: 1 },
-        { id: crypto.randomUUID(), label: "Tidak", score: 0 },
+        { id: createOptionId(), label: "Ya", score: 1 },
+        { id: createOptionId(), label: "Tidak", score: 0 },
       ],
     });
   };
@@ -221,10 +229,7 @@ export default function QuestionnaireDetail({
   const addOption = () => {
     setFormData((prev) => ({
       ...prev,
-      options: [
-        ...prev.options,
-        { id: crypto.randomUUID(), label: "", score: 0 },
-      ],
+      options: [...prev.options, { id: createOptionId(), label: "", score: 0 }],
     }));
   };
 
@@ -452,7 +457,7 @@ export default function QuestionnaireDetail({
             >
               Batal
             </Button>
-            <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700">
+            <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700 text-white">
               Simpan
             </Button>
           </DialogFooter>

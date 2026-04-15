@@ -1,7 +1,17 @@
 "use client";
 
 import * as React from "react";
-import * as RechartsPrimitive from "recharts@2.15.2";
+import * as RechartsPrimitive from "recharts";
+import type {
+  DefaultLegendContentProps,
+  LegendPayload,
+  TooltipContentProps,
+  TooltipPayloadEntry,
+} from "recharts";
+import type {
+  NameType,
+  ValueType,
+} from "recharts/types/component/DefaultTooltipContent";
 
 import { cn } from "./utils";
 
@@ -104,6 +114,16 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
+type ChartTooltipContentProps = TooltipContentProps<ValueType, NameType> &
+  React.ComponentProps<"div"> & {
+    hideLabel?: boolean;
+    hideIndicator?: boolean;
+    indicator?: "line" | "dot" | "dashed";
+    nameKey?: string;
+    labelKey?: string;
+    color?: string;
+  };
+
 function ChartTooltipContent({
   active,
   payload,
@@ -118,22 +138,17 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  React.ComponentProps<"div"> & {
-    hideLabel?: boolean;
-    hideIndicator?: boolean;
-    indicator?: "line" | "dot" | "dashed";
-    nameKey?: string;
-    labelKey?: string;
-  }) {
+}: ChartTooltipContentProps) {
   const { config } = useChart();
+  const payloadEntries =
+    payload as ReadonlyArray<TooltipPayloadEntry<ValueType, NameType>>;
 
   const tooltipLabel = React.useMemo(() => {
-    if (hideLabel || !payload?.length) {
+    if (hideLabel || !payloadEntries.length) {
       return null;
     }
 
-    const [item] = payload;
+    const [item] = payloadEntries;
     const key = `${labelKey || item?.dataKey || item?.name || "value"}`;
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
     const value =
@@ -144,7 +159,7 @@ function ChartTooltipContent({
     if (labelFormatter) {
       return (
         <div className={cn("font-medium", labelClassName)}>
-          {labelFormatter(value, payload)}
+          {labelFormatter(value, payloadEntries)}
         </div>
       );
     }
@@ -157,18 +172,18 @@ function ChartTooltipContent({
   }, [
     label,
     labelFormatter,
-    payload,
+    payloadEntries,
     hideLabel,
     labelClassName,
     config,
     labelKey,
   ]);
 
-  if (!active || !payload?.length) {
+  if (!active || !payloadEntries.length) {
     return null;
   }
 
-  const nestLabel = payload.length === 1 && indicator !== "dot";
+  const nestLabel = payloadEntries.length === 1 && indicator !== "dot";
 
   return (
     <div
@@ -179,21 +194,23 @@ function ChartTooltipContent({
     >
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
-        {payload.map((item, index) => {
+        {payloadEntries.map(
+          (item: TooltipPayloadEntry<ValueType, NameType>, index: number) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
-          const indicatorColor = color || item.payload.fill || item.color;
+          const indicatorColor = color || item.payload?.fill || item.color;
+          const itemKey = `${item.name || item.dataKey || item.value || index}`;
 
           return (
             <div
-              key={item.dataKey}
+              key={itemKey}
               className={cn(
                 "[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5",
                 indicator === "dot" && "items-center",
               )}
             >
               {formatter && item?.value !== undefined && item.name ? (
-                formatter(item.value, item.name, item, index, item.payload)
+                formatter(item.value, item.name, item, index, payloadEntries)
               ) : (
                 <>
                   {itemConfig?.icon ? (
@@ -232,7 +249,7 @@ function ChartTooltipContent({
                         {itemConfig?.label || item.name}
                       </span>
                     </div>
-                    {item.value && (
+                    {item.value !== undefined && item.value !== null && (
                       <span className="text-foreground font-mono font-medium tabular-nums">
                         {item.value.toLocaleString()}
                       </span>
@@ -242,7 +259,8 @@ function ChartTooltipContent({
               )}
             </div>
           );
-        })}
+          },
+        )}
       </div>
     </div>
   );
@@ -250,20 +268,23 @@ function ChartTooltipContent({
 
 const ChartLegend = RechartsPrimitive.Legend;
 
+type ChartLegendContentProps = React.ComponentProps<"div"> &
+  Pick<DefaultLegendContentProps, "payload" | "verticalAlign"> & {
+    hideIcon?: boolean;
+    nameKey?: string;
+  };
+
 function ChartLegendContent({
   className,
   hideIcon = false,
   payload,
   verticalAlign = "bottom",
   nameKey,
-}: React.ComponentProps<"div"> &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
-    hideIcon?: boolean;
-    nameKey?: string;
-  }) {
+}: ChartLegendContentProps) {
   const { config } = useChart();
+  const legendPayload = payload as ReadonlyArray<LegendPayload> | undefined;
 
-  if (!payload?.length) {
+  if (!legendPayload?.length) {
     return null;
   }
 
@@ -275,13 +296,14 @@ function ChartLegendContent({
         className,
       )}
     >
-      {payload.map((item) => {
+      {legendPayload.map((item: LegendPayload) => {
         const key = `${nameKey || item.dataKey || "value"}`;
         const itemConfig = getPayloadConfigFromPayload(config, item, key);
+        const itemKey = `${item.dataKey || item.value || "value"}`;
 
         return (
           <div
-            key={item.value}
+            key={itemKey}
             className={cn(
               "[&>svg]:text-muted-foreground flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3",
             )}
