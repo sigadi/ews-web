@@ -107,7 +107,7 @@ export default function Sidebar() {
     { id: "users", label: "Manajemen User", icon: Users, href: "/admin/users" },
     {
       id: "appointments",
-      label: "Jadwal Skrining",
+      label: "Skrining",
       icon: Calendar,
       href: "/admin/appointments",
     },
