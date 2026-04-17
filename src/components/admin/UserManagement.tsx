@@ -322,6 +322,7 @@ export default function UserManagement() {
 
   useEffect(() => {
     fetchUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -808,7 +809,7 @@ export default function UserManagement() {
                               <Checkbox
                                 id={`ims-${imsItem}`}
                                 checked={formData.ims.includes(imsItem)}
-                                onCheckedChange={(checked: any) => {
+                                onCheckedChange={(checked) => {
                                   let newIms = [...formData.ims];
                                   if (checked) {
                                     newIms.push(imsItem);
@@ -909,107 +910,103 @@ export default function UserManagement() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <p className="text-sm font-medium text-gray-500">Jenis Kelamin</p>
-                              <p className="text-gray-900">{selectedUser.profile.gender}</p>
+                              <p className="text-gray-900">{selectedUser.profile.gender || '-'}</p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-500">Usia</p>
-                              <p className="text-gray-900">{selectedUser.profile.age} Tahun</p>
+                              <p className="text-gray-900">{selectedUser.profile.age ? `${selectedUser.profile.age} Tahun` : '-'}</p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-500">Tanggal Lahir</p>
-                              <p className="text-gray-900">{selectedUser.profile.birthDate}</p>
+                              <p className="text-gray-900">{selectedUser.profile.birthDate || '-'}</p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-500">Status Pernikahan</p>
-                              <p className="text-gray-900">{selectedUser.profile.maritalStatus}</p>
+                              <p className="text-gray-900">{selectedUser.profile.maritalStatus || '-'}</p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-500">Pendidikan Terakhir</p>
-                              <p className="text-gray-900">{selectedUser.profile.education}</p>
+                              <p className="text-gray-900">{selectedUser.profile.education || '-'}</p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-500">Pekerjaan</p>
-                              <p className="text-gray-900">{selectedUser.profile.job}</p>
+                              <p className="text-gray-900">{selectedUser.profile.job || '-'}</p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-500">Penghasilan</p>
-                              <p className="text-gray-900">{selectedUser.profile.income}</p>
+                              <p className="text-gray-900">{selectedUser.profile.income || '-'}</p>
                             </div>
                             <div className="md:col-span-2">
                               <p className="text-sm font-medium text-gray-500">Alamat</p>
-                              <p className="text-gray-900">{selectedUser.profile.address}</p>
+                              <p className="text-gray-900">{selectedUser.profile.address || '-'}</p>
                             </div>
                           </div>
                         </div>
                       )}
 
                       {/* Section 3: Health & BMI */}
-                      {selectedUser.bmi && (
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3 border-b pb-2">Kesehatan & BMI</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Berat Badan</p>
-                              <p className="text-gray-900">{selectedUser.bmi.weight} kg</p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Tinggi Badan</p>
-                              <p className="text-gray-900">{selectedUser.bmi.height} cm</p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">BMI Score</p>
-                              <p className="text-gray-900">{selectedUser.bmi.bmi}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Kategori BMI</p>
-                              <p className="text-gray-900">{selectedUser.bmi.category}</p>
-                            </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 border-b pb-2">Kesehatan & BMI</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Berat Badan</p>
+                            <p className="text-gray-900">{selectedUser?.bmi?.weight || '-'} {selectedUser?.bmi?.weight ? 'kg' : ''}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Tinggi Badan</p>
+                            <p className="text-gray-900">{selectedUser?.bmi?.height || '-'} {selectedUser?.bmi?.height ? 'cm' : ''}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">BMI Score</p>
+                            <p className="text-gray-900">{selectedUser?.bmi?.bmi || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Kategori BMI</p>
+                            <p className="text-gray-900">{selectedUser?.bmi?.category || '-'}</p>
                           </div>
                         </div>
-                      )}
+                      </div>
 
                       {/* Section 4: Risk Factors */}
-                      {selectedUser.riskFactors && (
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3 border-b pb-2">Faktor Risiko</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Riwayat Keluarga (Kanker)</p>
-                              <p className="text-gray-900">{selectedUser.riskFactors.familyHistory ? "Ya" : "Tidak"}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Kontrasepsi Hormonal</p>
-                              <p className="text-gray-900">{selectedUser.riskFactors.hormonalContraception ? "Ya" : "Tidak"}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Merokok</p>
-                              <p className="text-gray-900">{selectedUser.riskFactors.smokingHistory ? "Ya" : "Tidak"}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Jumlah Anak (Paritas)</p>
-                              <p className="text-gray-900">{selectedUser.riskFactors.parity}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Usia Pertama Menikah</p>
-                              <p className="text-gray-900">{selectedUser.riskFactors.ageFirstMarriage} Tahun</p>
-                            </div>
-                            <div className="md:col-span-2">
-                              <p className="text-sm font-medium text-gray-500">Riwayat IMS</p>
-                              <div className="flex flex-wrap gap-2 mt-1">
-                                {selectedUser.riskFactors.ims && selectedUser.riskFactors.ims.length > 0 ? (
-                                  selectedUser.riskFactors.ims.map((ims, idx) => (
-                                    <span key={idx} className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-700 border">
-                                      {ims}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <p className="text-gray-900">-</p>
-                                )}
-                              </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3 border-b pb-2">Faktor Risiko</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Riwayat Keluarga (Kanker)</p>
+                            <p className="text-gray-900">{selectedUser?.riskFactors?.familyHistory ? (selectedUser?.riskFactors?.familyHistory ? "Ya" : "Tidak") : '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Kontrasepsi Hormonal</p>
+                            <p className="text-gray-900">{selectedUser?.riskFactors?.hormonalContraception ? (selectedUser?.riskFactors?.hormonalContraception ? "Ya" : "Tidak") : '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Merokok</p>
+                            <p className="text-gray-900">{selectedUser?.riskFactors?.smokingHistory ? (selectedUser?.riskFactors?.smokingHistory ? "Ya" : "Tidak") : '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Jumlah Anak (Paritas)</p>
+                            <p className="text-gray-900">{selectedUser?.riskFactors?.parity || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Usia Pertama Menikah</p>
+                            <p className="text-gray-900">{selectedUser?.riskFactors?.ageFirstMarriage || '-'} {selectedUser?.riskFactors?.ageFirstMarriage ? 'Tahun':''}</p>
+                          </div>
+                          <div className="md:col-span-2">
+                            <p className="text-sm font-medium text-gray-500">Riwayat IMS</p>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {selectedUser?.riskFactors?.ims && selectedUser?.riskFactors?.ims.length > 0 ? (
+                                selectedUser?.riskFactors?.ims.map((ims, idx) => (
+                                  <span key={idx} className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-700 border">
+                                    {ims}
+                                  </span>
+                                ))
+                              ) : (
+                                <p className="text-gray-900">-</p>
+                              )}
                             </div>
                           </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 )}
