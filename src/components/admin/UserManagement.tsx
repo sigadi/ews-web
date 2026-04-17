@@ -1001,7 +1001,7 @@ export default function UserManagement() {
                                   </span>
                                 ))
                               ) : (
-                                <p className="text-gray-900">-</p>
+                                <p className="text-gray-900">Tidak ada</p>
                               )}
                             </div>
                           </div>
