@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, UserPlus, Edit, Trash2, Eye, Loader2 } from "lucide-react";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import {
@@ -67,6 +67,10 @@ export default function UserManagement() {
   const pageSize = 10;
 
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  //----------------------------------------------------------------
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingId, setEditingId] =  useState<string | null>(null);
+  //----------------------------------------------------------------
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -227,7 +231,288 @@ export default function UserManagement() {
       setIsSubmitting(false);
     }
   };
+// edit-------------------------
+  const handleEditUser = (
+    user: User
+    ) => {
+    setEditingId(user.id);
+    setIsEditMode(true);
 
+    setFormData({
+    name: user.name || "",
+    email: user.email || "",
+    password: "",
+    phone: user.phone || "",
+    riskLevel: user.riskLevel,
+    status: user.status,
+
+    weight:
+      user.bmi?.weight || "",
+
+    height:
+      user.bmi?.height || "",
+
+    gender:
+      user.profile?.gender ||
+      "Perempuan",
+
+    birthDate: "",
+
+    maritalStatus:
+      user.profile
+        ?.maritalStatus || "",
+
+    education:
+      user.profile
+        ?.education || "",
+
+    job:
+      user.profile?.job || "",
+
+    income:
+      user.profile
+        ?.income || "",
+
+    address:
+      user.profile
+        ?.address || "",
+
+    familyHistory:
+      String(
+        user.riskFactors
+          ?.familyHistory
+      ),
+
+    hormonalContraception:
+      String(
+        user.riskFactors
+          ?.hormonalContraception
+      ),
+
+    parity:
+      String(
+        user.riskFactors
+          ?.parity || ""
+      ),
+
+    ageFirstMarriage:
+      String(
+        user.riskFactors
+          ?.ageFirstMarriage ||
+          ""
+      ),
+
+    ims:
+      user.riskFactors?.ims ||
+      [],
+
+    smokingHistory:
+      String(
+        user.riskFactors
+          ?.smokingHistory
+      ),
+
+    });
+
+    setIsAddUserOpen(true);
+    };
+    // edit-------------------------
+   // update user
+   const handleUpdateUser =
+async (
+e: React.FormEvent
+) => {
+e.preventDefault();
+
+if (!editingId)
+  return;
+
+try {
+  setIsSubmitting(true);
+
+  const bmiResult =
+    calculateBMI(
+      Number(
+        formData.weight
+      ),
+      Number(
+        formData.height
+      )
+    );
+
+  await updateDoc(
+    doc(
+      db,
+      "users",
+      editingId
+    ),
+    {
+      name:
+        formData.name,
+
+      email:
+        formData.email,
+
+      profile: {
+        name:
+          formData.name,
+
+        gender:
+          formData.gender,
+
+        education:
+          formData.education,
+
+        maritalStatus:
+          formData.maritalStatus,
+
+        job:
+          formData.job,
+
+        income:
+          formData.income,
+
+        address:
+          formData.address,
+
+        phone:
+          formData.phone,
+      },
+
+      riskFactors: {
+        familyHistory:
+          formData.familyHistory ===
+          "true",
+
+        hormonalContraception:
+          formData.hormonalContraception ===
+          "true",
+
+        parity:
+          Number(
+            formData.parity
+          ),
+
+        ageFirstMarriage:
+          Number(
+            formData.ageFirstMarriage
+          ),
+
+        ims:
+          formData.ims,
+
+        smokingHistory:
+          formData.smokingHistory ===
+          "true",
+      },
+
+      bmi: {
+        weight:
+          formData.weight,
+
+        height:
+          formData.height,
+
+        bmi:
+          bmiResult.bmi,
+
+        category:
+          bmiResult.category,
+      },
+
+      riskLabel:
+        formData.riskLevel,
+
+      onboardingCompleted:
+        formData.status ===
+        "active",
+    }
+  );
+
+  fetchUsers();
+
+  setIsAddUserOpen(
+    false
+  );
+
+  setIsEditMode(
+    false
+  );
+
+  setEditingId(
+    null
+  );
+
+  alert(
+    "User berhasil diupdate"
+  );
+} catch (err) {
+  console.error(
+    err
+  );
+
+  alert(
+    "Gagal update user"
+  );
+} finally {
+  setIsSubmitting(
+    false
+  );
+}
+
+};
+    // delete-------------------------
+    const handleDeleteUser =
+async (
+id: string
+) => {
+const ok =
+window.confirm(
+"Hapus user?"
+);
+
+if (!ok)
+  return;
+
+try {
+  await deleteDoc(
+    doc(
+      db,
+      "users",
+      id
+    )
+  );
+
+  setUsers(
+    (
+      prev
+    ) =>
+      prev.filter(
+        (
+          u
+        ) =>
+          u.id !==
+          id
+      )
+  );
+
+  alert(
+    "User berhasil dihapus"
+  );
+} catch (
+  error
+) {
+  console.error(
+    error
+  );
+
+  alert(
+    "Gagal hapus user"
+  );
+}
+
+};
+    // delete user
   const formatFirestoreDate = (value: any) => {
     if (!value) return "-";
 
@@ -1093,12 +1378,14 @@ export default function UserManagement() {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
+			onClick={() => handleEditUser(user)}
                         className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                         title="Edit"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
+			onClick={() => handleDeleteUser(user.id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Hapus"
                       >
