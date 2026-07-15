@@ -292,9 +292,14 @@ export default function ContentManagement() {
               <div key={article.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                 <div className="aspect-video bg-gray-200 relative overflow-hidden">
                   <img
-                    src={article.thumbnail}
+                    src={article.thumbnail || '/placeholder.png'}
                     alt={article.title}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget
+                      target.onerror = null
+                      target.src = '/placeholder.png'
+                    }}
                   />
                   <div className="absolute top-3 right-3">
                     <span className={`px-3 py-1 rounded-full text-sm ${getStatusStyle(article.status)}`}>
